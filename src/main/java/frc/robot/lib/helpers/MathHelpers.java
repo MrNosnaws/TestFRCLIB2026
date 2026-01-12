@@ -46,4 +46,35 @@ public class MathHelpers {
     public static boolean epsilonEquals(double a, double b, double epsilon) {
         return (a - epsilon <= b) && (a + epsilon >= b);
     }
+
+    public static int modInverse(int value, int modulus) {
+        int originalModulus = modulus;
+
+        int previousCoefficient = 0;
+        int currentCoefficient = 1;
+
+        int previousRemainder = modulus;
+        int currentRemainder = value;
+
+        while (currentRemainder != 0) {
+            int quotient = previousRemainder / currentRemainder;
+
+            int nextRemainder = previousRemainder - quotient * currentRemainder;
+            previousRemainder = currentRemainder;
+            currentRemainder = nextRemainder;
+
+            int nextCoefficient = previousCoefficient - quotient * currentCoefficient;
+            previousCoefficient = currentCoefficient;
+            currentCoefficient = nextCoefficient;
+        }
+
+        if (previousRemainder != 1) {
+            throw new IllegalArgumentException("No modular inverse exists");
+        }
+
+        int inverse = previousCoefficient;
+        if (inverse < 0) inverse += originalModulus;
+
+        return inverse;
+    }
 }
