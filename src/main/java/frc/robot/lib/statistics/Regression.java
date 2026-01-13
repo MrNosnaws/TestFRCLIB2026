@@ -97,6 +97,10 @@ public class Regression {
         return function.apply(x);
     }
 
+    public Function<Double, Double> getFunction() {
+        return function;
+    }
+
     public enum RegressionType {
         LINEAR,
         EXPONENTIAL,

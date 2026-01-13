@@ -3,7 +3,6 @@ package frc.robot.lib.helpers;
 import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.Seconds;
 
-import java.util.Vector;
 import java.util.function.Function;
 
 import edu.wpi.first.units.measure.Distance;

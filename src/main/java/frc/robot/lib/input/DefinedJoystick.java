@@ -1,10 +1,15 @@
 package frc.robot.lib.input;
 
 import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.event.EventLoop;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.button.JoystickButton;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.lib.helpers.MathHelpers;
 
 public class DefinedJoystick extends Joystick {
+
+    private EventLoop povLooper = CommandScheduler.getInstance().getDefaultButtonLoop();
 
     public DefinedJoystick(int port) {
         super(port);
@@ -108,36 +113,36 @@ public class DefinedJoystick extends Joystick {
         return new JoystickButton(this, JoystickConstants.RIGHT_NUM_PAD_BOTTOM_RIGHT_BUTTON);
     }
 
-    public JoystickButton getPOVUpButton() {
-        return this.getPOVUpButton();
+    public Trigger getPOVUpTrigger() {
+        return new Trigger(this.povUp(povLooper));
     }
 
-    public JoystickButton getPOVDownButton() {
-        return this.getPOVDownButton();
+    public Trigger getPOVDownTrigger() {
+        return new Trigger(this.povDown(povLooper));
     }
 
-    public JoystickButton getPOVLeftButton() {
-        return this.getPOVLeftButton();
+    public Trigger getPOVLeftTrigger() {
+        return new Trigger(this.povLeft(povLooper));
     }
 
-    public JoystickButton getPOVRightButton() {
-        return this.getPOVRightButton();
+    public Trigger getPOVRightTrigger() {
+        return new Trigger(this.povRight(povLooper));
     }
 
-    public JoystickButton getPOVUpRightButton() {
-        return this.getPOVUpRightButton();
+    public Trigger getPOVUpRightTrigger() {
+        return new Trigger(this.povUpRight(povLooper));
     }
 
-    public JoystickButton getPOVUpLeftButton() {
-        return this.getPOVUpLeftButton();
+    public Trigger getPOVUpLeftTrigger() {
+        return new Trigger(this.povUpLeft(povLooper));
     }
 
-    public JoystickButton getPOVDownRightButton() {
-        return this.getPOVDownRightButton();
+    public Trigger getPOVDownRightTrigger() {
+        return new Trigger(this.povDownRight(povLooper));
     }
 
-    public JoystickButton getPOVDownLeftButton() {
-        return this.getPOVDownLeftButton();
+    public Trigger getPOVDownLeftTrigger() {
+        return new Trigger(this.povDownLeft(povLooper));
     }
 
 }
