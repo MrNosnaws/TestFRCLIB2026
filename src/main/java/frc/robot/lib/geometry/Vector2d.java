@@ -53,6 +53,10 @@ public class Vector2d {
         vector.times(scalar);
     }
 
+    public Vector2d scaled(double scalar) {
+        return new Vector2d(vector.times(scalar));
+    }
+
     public void add(Vector2d other) {
         vector = vector.plus(other.getVectorAsTranslation());
     }

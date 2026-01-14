@@ -35,15 +35,57 @@ public class ProjectileHelper {
 
         if (includeShootWhileMoving) {
             Time adjustedShotTime = shotTime.plus(Seconds.of(distanceToTarget.in(Meters) / radialVelocity));
-            Distance adjuctedTangentialDistance = Meters.of(tangentialVelocity * adjustedShotTime.in(Seconds));
-            FieldLocation adjustedShooterLocation = new FieldLocation(
-                shooterLocation.getX().plus(Meters.of(adjuctedTangentialDistance.in(Meters) * Math.cos(targetLocation.getIn(Meters).minus(shooterLocation.getIn(Meters)).getAngle().getRadians() + Math.PI / 2))),
-                shooterLocation.getY().plus(Meters.of(adjuctedTangentialDistance.in(Meters) * Math.sin(targetLocation.getIn(Meters).minus(shooterLocation.getIn(Meters)).getAngle().getRadians() + Math.PI / 2)))
-            );
-            profile = profileFunction.apply(adjustedShooterLocation);
+            FieldLocation approximateLocation = adjustShotLocationForVelocity(
+                shooterLocation, 
+                velocityMetersPerSecond, 
+                adjustedShotTime, 
+                shotTimeFunction, 
+                profileFunction, 
+                Seconds.of(0.05), 
+                3, 
+                0.8);
+            profile = profileFunction.apply(approximateLocation);
         }
 
         return profile;
+    }
+
+    public static FieldLocation adjustShotLocationForVelocity(
+        FieldLocation initalLocation, 
+        Vector2d velocityMetersPerSecond, 
+        Time intialGuess, 
+        Function<ShotProfile, Time> shotTimeFunction, 
+        Function<FieldLocation, ShotProfile> profileFunction,
+        Time allowableError, 
+        int maxIterations,
+        double adjustmentScalar
+    ) {
+        FieldLocation adjuctedLocation = initalLocation;
+        for (int i = 0; i < maxIterations; i++) {
+            // Calculate the adjusted location
+            adjuctedLocation = new FieldLocation(
+                velocityMetersPerSecond.scaled(intialGuess.in(Seconds)).applyVector(initalLocation.getIn(Meters)),
+                Meters
+            );
+
+            // calculate the shot time for the adjusted location
+            ShotProfile profile = profileFunction.apply(adjuctedLocation);
+            Time shotTime = shotTimeFunction.apply(profile);
+            Time timeError = shotTime.minus(intialGuess);
+
+            // If the time error is within the allowable error, return the adjusted location
+            if (timeError.in(Seconds) < allowableError.in(Seconds)) {
+                return adjuctedLocation;
+            }
+
+            // adjusts it by a scaler to try and reduce overshooting and oscillation around the target time
+            Time shotTimeWithAdjustmentScaler = shotTime.plus(Seconds.of((1 - adjustmentScalar) * (intialGuess.in(Seconds) - shotTime.in(Seconds))));
+            intialGuess = shotTimeWithAdjustmentScaler;
+        }
+
+
+        System.out.println("Max iterations reached in adjustShotLocationForVelocity, returning last adjusted location");
+        return adjuctedLocation;
     }
 
 
