@@ -5,57 +5,59 @@ import static edu.wpi.first.units.Units.Seconds;
 
 import java.util.function.Function;
 
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.units.measure.Time;
 import frc.robot.lib.geometry.FieldLocation;
 import frc.robot.lib.geometry.Vector2d;
-import frc.robot.lib.util.ShotProfile;
 
 public class ProjectileHelper {
     
-    public static ShotProfile getShotProfile(FieldLocation targetLocation, FieldLocation shooterLocation, Function<FieldLocation, ShotProfile> profileFunction, Function<ShotProfile, Time> shotTimeFunction, Vector2d velocityMetersPerSecond, boolean includeShootWhileMoving) {
-        ShotProfile profile = profileFunction.apply(targetLocation);
-        Time shotTime = shotTimeFunction.apply(profile);
+    /**
+     * Calculates the offset vector that the robot should aim at to hit a target given the distance to the target, the robot's rotation, the time it takes for the projectile to reach the target, and the field relative velocity of the target.
+     * @param distanceToTarget The distance to the target
+     * @param robotTargetRotation The rotation of the robot relative to the target
+     * @param shotTimeFunction A function that takes a distance and returns the time it takes for the projectile to reach that distance
+     * @param fieldRelitiveVelocityMetersPerSecond The velocity of the target relative to the field in meters per second
+     * @return The offset vector that the robot should aim at
+     */
+    public static Vector2d getShotOffsetVector(Distance distanceToTarget, Rotation2d robotTargetRotation, Function<Distance, Time> shotTimeFunction, Vector2d fieldRelitiveVelocityMetersPerSecond) {
+        // assume robot is at (0, 0) and target is at (distanceToTarget, 0)
+        Time shotTime = shotTimeFunction.apply(distanceToTarget);
 
-        Distance distanceToTarget = Meters.of(targetLocation.getIn(Meters).minus(shooterLocation.getIn(Meters)).getNorm());
+        // translate field relitive velocity to robot target relitive velocity
+        Vector2d robotTargetRelitiveVelocity = fieldRelitiveVelocityMetersPerSecond.rotated(robotTargetRotation.unaryMinus());
+        double towardsTargetVelocity = robotTargetRelitiveVelocity.getX();
+        Time intialGuess = shotTime.minus(Seconds.of(distanceToTarget.in(Meters) / towardsTargetVelocity));
 
-        // velocity towords the target
-        double radialVelocity = velocityMetersPerSecond.getVectorAsTranslation().getNorm() 
-                                    * Math.cos(
-                                        velocityMetersPerSecond.getVectorAsTranslation().getAngle().getRadians()
-                                        - targetLocation.getIn(Meters).minus(shooterLocation.getIn(Meters)).getAngle().getRadians()
-                                    );
+        FieldLocation intialLocation = new FieldLocation(0, 0, Meters);
+        FieldLocation targetLocation = new FieldLocation(distanceToTarget.in(Meters), 0, Meters);
 
-        // velocity perpendicular to the target
-        double tangentialVelocity = velocityMetersPerSecond.getVectorAsTranslation().getNorm() 
-                                    * Math.sin(
-                                        velocityMetersPerSecond.getVectorAsTranslation().getAngle().getRadians()
-                                        - targetLocation.getIn(Meters).minus(shooterLocation.getIn(Meters)).getAngle().getRadians()
-                                    );
+        FieldLocation adjustedLocation = adjustShotLocationForVelocity(
+            intialLocation, 
+            targetLocation, 
+            robotTargetRelitiveVelocity, 
+            intialGuess, 
+            shotTimeFunction, 
+            Seconds.of(0.01), 
+            10,
+            0.8
+        );
 
-        if (includeShootWhileMoving) {
-            Time adjustedShotTime = shotTime.plus(Seconds.of(distanceToTarget.in(Meters) / radialVelocity));
-            FieldLocation approximateLocation = adjustShotLocationForVelocity(
-                shooterLocation, 
-                velocityMetersPerSecond, 
-                adjustedShotTime, 
-                shotTimeFunction, 
-                profileFunction, 
-                Seconds.of(0.05), 
-                3, 
-                0.8);
-            profile = profileFunction.apply(approximateLocation);
-        }
+        Vector2d shotOffsetVector = new Vector2d(
+            adjustedLocation.getIn(Meters).getX(),
+            adjustedLocation.getIn(Meters).getY()
+        ).rotated(robotTargetRotation);
 
-        return profile;
+        return shotOffsetVector;
     }
 
-    public static FieldLocation adjustShotLocationForVelocity(
+    private static FieldLocation adjustShotLocationForVelocity(
         FieldLocation initalLocation, 
+        FieldLocation targetLocation,
         Vector2d velocityMetersPerSecond, 
         Time intialGuess, 
-        Function<ShotProfile, Time> shotTimeFunction, 
-        Function<FieldLocation, ShotProfile> profileFunction,
+        Function<Distance, Time> shotTimeFunction, 
         Time allowableError, 
         int maxIterations,
         double adjustmentScalar
@@ -69,8 +71,7 @@ public class ProjectileHelper {
             );
 
             // calculate the shot time for the adjusted location
-            ShotProfile profile = profileFunction.apply(adjuctedLocation);
-            Time shotTime = shotTimeFunction.apply(profile);
+            Time shotTime = shotTimeFunction.apply(Meters.of(adjuctedLocation.getIn(Meters).minus(targetLocation.getIn(Meters)).getNorm()));
             Time timeError = shotTime.minus(intialGuess);
 
             // If the time error is within the allowable error, return the adjusted location
@@ -87,8 +88,6 @@ public class ProjectileHelper {
         System.out.println("Max iterations reached in adjustShotLocationForVelocity, returning last adjusted location");
         return adjuctedLocation;
     }
-
-
 
 
 

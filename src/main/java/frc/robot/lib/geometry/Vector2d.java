@@ -73,4 +73,8 @@ public class Vector2d {
         return point.plus(vector);
     }
 
+    public Vector2d rotated(Rotation2d unaryMinus) {
+        return new Vector2d(vector.rotateBy(unaryMinus));
+    }
+
 }
