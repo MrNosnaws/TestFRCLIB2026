@@ -7,6 +7,8 @@ package frc.robot;
 import static edu.wpi.first.units.Units.Rotations;
 
 import org.littletonrobotics.junction.LoggedRobot;
+import org.littletonrobotics.junction.Logger;
+import org.littletonrobotics.junction.networktables.NT4Publisher;
 
 import edu.wpi.first.hal.DriverStationJNI;
 import edu.wpi.first.util.WPIUtilJNI;
@@ -32,6 +34,9 @@ public class Robot extends LoggedRobot {
     turretEstimator = new CRTEncoder(0, 1, 21, 20, 200);
     
     joystick = new Joystick(0);
+
+    Logger.addDataReceiver(new NT4Publisher());
+    Logger.start();
   }
 
   public void disabled() {}
@@ -57,5 +62,10 @@ public class Robot extends LoggedRobot {
       "Motor: %.4f rot | Truth: %.4f deg | CRT Solved: %.4f deg | Error: %.4f%n",
       motorSimPos, trueDegrees, estimatedDegrees, Math.abs(trueDegrees - estimatedDegrees)
     );
+
+    Logger.recordOutput("measured turret position", estimatedDegrees);
+    Logger.recordOutput("\'true\' turret position", trueDegrees);
+    Logger.recordOutput("Encoder A Value", turretEstimator.getEncoderABAngle().getFirst());
+    Logger.recordOutput("Encoder B Value", turretEstimator.getEncoderABAngle().getSecond());
   }
 }
