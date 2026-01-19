@@ -29,7 +29,7 @@ public class Robot extends LoggedRobot {
   private double trueTurretPos = 0.0;
 
   public Robot() {
-    turretEstimator = new CRTEncoder(0, 1, 19, 21, 200);
+    turretEstimator = new CRTEncoder(0, 1, 21, 20, 200);
     
     joystick = new Joystick(0);
   }
@@ -47,7 +47,7 @@ public class Robot extends LoggedRobot {
     double speed = joystick.getY();
     motorSimPos += speed * 0.01;
     trueTurretPos = motorSimPos * (20.0 / 200.0);
-    turretEstimator.updateSimulationFromMotor(motorSimPos);
+    turretEstimator.updateSimulationFromMotor(trueTurretPos);
 
     double estimatedRotations = turretEstimator.getNonZeroMeasuredGearAngle().in(Rotations);
     double estimatedDegrees = estimatedRotations * 360.0;

@@ -1,8 +1,14 @@
 package frc.robot.lib.components;
 
+import static edu.wpi.first.units.Units.Radians;
 import static edu.wpi.first.units.Units.Rotations;
 
+import com.ctre.phoenix6.BaseStatusSignal;
+import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.hardware.CANcoder;
+
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.Pair;
 import edu.wpi.first.units.measure.Angle;
 import frc.robot.lib.helpers.MathHelpers;
 /* 
@@ -50,42 +56,37 @@ public class CRTEncoder {
         return zeroPosition.plus(getNonZeroMeasuredGearAngle());
     }
 
-public Angle getNonZeroMeasuredGearAngle() {
-    double valA = encoderA.getAbsolutePosition().getValue().in(Rotations);
-    double valB = encoderB.getAbsolutePosition().getValue().in(Rotations);
+    public Pair<Angle, Angle> getEncoderABAngle() {
+        StatusSignal<Angle> cancoderAPositionSignal = encoderA.getAbsolutePosition(false);
+        StatusSignal<Angle> cancoderBPositionSignal = encoderB.getAbsolutePosition(false);
 
-    valA = valA % 1.0; 
-    valB = valB % 1.0;
-    if (valA < 0) valA += 1.0;
-    if (valB < 0) valB += 1.0;
-
-    double remainderA = valA * aTeeth;
-    double remainderB = valB * bTeeth;
-
-    double diff = remainderB - remainderA;
-    double kRaw = (diff * invAToB) % bTeeth;
-    if (kRaw < 0) kRaw += bTeeth;
-
-    long kInt = Math.round(kRaw);
-    if (kInt == (long)bTeeth) kInt = 0;
-
-    double totalTeeth = remainderA + (aTeeth * kInt);
-
-    double predictedRB = totalTeeth % bTeeth;
-    double error = Math.abs(predictedRB - remainderB);
-
-    if (error > bTeeth / 2.0) {
-        error = bTeeth - error;
+        BaseStatusSignal.waitForAll(0.020, cancoderAPositionSignal, cancoderBPositionSignal);
+        return new Pair<Angle,Angle>(cancoderAPositionSignal.getValue(), cancoderBPositionSignal.getValue());
     }
 
-    if (error > 0.1) System.out.println("CRT Error too high: " + error);
+    public Angle getNonZeroMeasuredGearAngle() {
+        // get absolute positions of both encoders
+        Angle aAngle = getEncoderABAngle().getFirst();
+        Angle bAngle = getEncoderABAngle().getSecond();
 
-    if (error > 0.5) {
-        return Rotations.of(-1);
+        double ratioAtoB = (double) aTeeth / bTeeth;
+        
+        // predict the angle if there have been no rotations of encoder A
+        Angle predictedAngleB = aAngle.times(ratioAtoB);
+        Angle differenceInPredictedAngle = bAngle.minus(predictedAngleB);
+
+        Angle differenceWrappedAngle = Radians.of(MathUtil.angleModulus(differenceInPredictedAngle.in(Radians)));
+
+        Angle errorPerGearARotation = Rotations.of(ratioAtoB);
+
+        long numGearARotations = Math.round(differenceWrappedAngle.in(Rotations) / (errorPerGearARotation.in(Rotations) -1.0));
+
+        // find the angle of the measured gear
+        Angle gearAAngle = aAngle.plus(Rotations.of(numGearARotations));
+        Angle measuredGearAngle = gearAAngle.times((double) aTeeth / messuredGearTeeth);
+        return measuredGearAngle;
+
     }
-
-    return Rotations.of(totalTeeth / messuredGearTeeth);
-}
 
     public void setZeroPosition(Angle zeroPosition) {
         this.zeroPosition = zeroPosition;
@@ -99,13 +100,12 @@ public Angle getNonZeroMeasuredGearAngle() {
         setZeroPosition(getMeasuredGearAngle());
     }
 
-    public void updateSimulationFromMotor(double motorRotations) {
-        double turretRotations = motorRotations * (20.0 / 200.0);
+    public void updateSimulationFromMotor(double turretPose) {
+        
+        double sensorARotations = turretPose * ((double) messuredGearTeeth / aTeeth);
+        double sensorBRotations = turretPose * ((double) messuredGearTeeth / bTeeth);
 
-        double sensorARotations = turretRotations * (200.0 / 19.0);
-        double sensorBRotations = turretRotations * (200.0 / 21.0);
-
-        encoderA.getSimState().setRawPosition(sensorARotations);
-        encoderB.getSimState().setRawPosition(sensorBRotations);
+        encoderA.getSimState().setRawPosition(sensorARotations % 1.0);
+        encoderB.getSimState().setRawPosition(sensorBRotations % 1.0);
     }
 }
